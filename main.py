@@ -43,6 +43,7 @@ class Console(object):
 
 class Checker(object):
     def __init__(self) -> None:
+        self.folder_path = self.createCurrentFolder()
         self.lock   = Lock()
         self.client = tls_client.Session(client_identifier='chrome_120', random_tls_extension_order=True)
 
@@ -55,7 +56,6 @@ class Checker(object):
 
     def check(self, promo: str, proxies: list) -> None:
         try:
-            folder_path = self.createCurrentFolder()
             _, code = promo.split('https://promos.discord.gg/')
             self.client.proxies = {'http': f'http://{random.choice(proxies)}'}
 
@@ -64,7 +64,7 @@ class Checker(object):
             if '"uses"' in x.text:
                 if x.json().get('uses') == 1:
                     with self.lock:
-                        open(f'{folder_path}/used.txt', 'a+', encoding='utf-8').write(f'{promo}\n')
+                        open(f'{self.folder_path}/used.txt', 'a+', encoding='utf-8').write(f'{promo}\n')
                         console.error(f"Used Promo Code: {promo[:-5]}***")
                         Stats.used += 1
                         console.title(f'Promo Checker | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337')
@@ -72,7 +72,7 @@ class Checker(object):
 
                 elif x.json().get('uses') == 0:
                     with self.lock:
-                        open(f'{folder_path}/valid.txt', 'a+', encoding='utf-8').write(f'{promo}\n')
+                        open(f'{self.folder_path}/valid.txt', 'a+', encoding='utf-8').write(f'{promo}\n')
                         console.success(f"Valid Promo Code: {promo[:-5]}***")
                         Stats.valid += 1
                         console.title(f'Promo Checker | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337')
@@ -80,7 +80,7 @@ class Checker(object):
                     
                 elif x.json().get('message') == 'Unknown Gift Code':
                     with self.lock:
-                        open(f'{folder_path}/invalid.txt', 'a+', encoding='utf-8').write(f'{promo}\n')
+                        open(f'{self.folder_path}/invalid.txt', 'a+', encoding='utf-8').write(f'{promo}\n')
                         console.error(f"Invalid Promo Code: {promo[:-5]}***")
                         Stats.invalid += 1
                         console.title(f'Promo Checker | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337')
@@ -94,7 +94,7 @@ class Checker(object):
 
                 else:
                     with self.lock:
-                        open(f'{folder_path}/error.txt', 'a+', encoding='utf-8').write(f'{promo}\n')
+                        open(f'{self.folder_path}/error.txt', 'a+', encoding='utf-8').write(f'{promo}\n')
                         console.error(f"Unknown Error: {promo[:-5]}*** -> {x.text}")
                         Stats.error += 1
                         console.title(f'Promo Checker | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337')
@@ -108,12 +108,13 @@ if __name__ == '__main__':
     threads = []
     start   = time.time()
     console = Console()
+    checker = Checker()
     promos  = open('input/promos.txt', 'r', encoding='utf-8').read().splitlines()
     proxies = open('input/proxies.txt', 'r', encoding='utf-8').read().splitlines()
     console.clear()
     
     for promo in promos:
-        thread = Thread(target=Checker().check, args=(promo, proxies,))
+        thread = Thread(target=checker.check, args=(promo, proxies,))
         threads.append(thread)
         thread.start()
 
