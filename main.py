@@ -127,6 +127,8 @@ if __name__ == '__main__':
     
     main()
 
+    promos  = open('input/promos.txt', 'r', encoding='utf-8').read().splitlines()
+
     console.info(f"Checked {len(promos)} Promos in {time.time()-start} | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337")
 
     input()
