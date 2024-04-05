@@ -2,6 +2,7 @@ from colorama import Fore
 from datetime import datetime
 from threading import Thread, Lock
 import tls_client, os, ctypes, time, random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Stats:
@@ -56,7 +57,7 @@ class Checker(object):
 
     def check(self, promo: str, proxies: list) -> None:
         try:
-            _, code = promo.split('https://promos.discord.gg/')
+            _, code = promo.split('https://promos.discord.gg/') if "promos.discord.gg" in promo else promo.split('https://discord.com/billing/promotions/')
             self.client.proxies = {'http': f'http://{random.choice(proxies)}'}
 
             x = self.client.get(f'https://discord.com/api/v9/entitlements/gift-codes/{code}?country_code=US&with_application=false&with_subscription_plan=true')
@@ -69,6 +70,7 @@ class Checker(object):
                         Stats.used += 1
                         console.title(f'Promo Checker | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337')
                         self.lock.release()
+                        return False
 
                 elif x.json().get('uses') == 0:
                     with self.lock:
@@ -77,6 +79,7 @@ class Checker(object):
                         Stats.valid += 1
                         console.title(f'Promo Checker | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337')
                         self.lock.release()
+                        return True
                     
                 elif x.json().get('message') == 'Unknown Gift Code':
                     with self.lock:
@@ -85,6 +88,7 @@ class Checker(object):
                         Stats.invalid += 1
                         console.title(f'Promo Checker | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337')
                         self.lock.release()
+                        return False
 
                 elif 'rate limited' in x.text.lower():
                     with self.lock:
@@ -99,27 +103,29 @@ class Checker(object):
                         Stats.error += 1
                         console.title(f'Promo Checker | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337')
                         self.lock.release()
+                        return False
 
-        except:
-            pass # Supressing exceptions
+        except Exception as e:
+            pass
+
+
+def main():
+    promos  = open('input/promos.txt', 'r', encoding='utf-8').read().splitlines()
+    proxies = open('input/proxies.txt', 'r', encoding='utf-8').read().splitlines()
+
+    with ThreadPoolExecutor(max_workers=50) as executor:
+        futures = [executor.submit(checker.check, promo, proxies) for promo in promos]
+        for future in as_completed(futures):
+            future.result()
 
 
 if __name__ == '__main__':
-    threads = []
     start   = time.time()
     console = Console()
     checker = Checker()
-    promos  = open('input/promos.txt', 'r', encoding='utf-8').read().splitlines()
-    proxies = open('input/proxies.txt', 'r', encoding='utf-8').read().splitlines()
     console.clear()
     
-    for promo in promos:
-        thread = Thread(target=checker.check, args=(promo, proxies,))
-        threads.append(thread)
-        thread.start()
-
-    for thread in threads:
-        thread.join()
+    main()
 
     console.info(f"Checked {len(promos)} Promos in {time.time()-start} | Valid: {Stats.valid} - Used: {Stats.used} - Invalid: {Stats.invalid} - Error: {Stats.error} | @homicide1337")
 
